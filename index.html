@@ -38,38 +38,41 @@ color: red;
 
 
 <script>
-// Example UPC list (replace with your own list)
-const upcList = [
-"012345678905",
-"123456789012",
-"036000291452",
-"789123456789",
-"11003012/25260185100479600159353"
-];
+  let upcList = [];
 
+  // Replace with your published CSV link
+  const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXeam6SfoEzimHSKH8xApmvLwJWQHhnV4F3xk6FaT2C5em1Gl5lxF5V4MjIDBJsIOnhULrDqxnu7RS/pub?output=csv";
 
-function onScanSuccess(decodedText) {
-const resultDiv = document.getElementById("result");
-if (upcList.includes(decodedText)) {
-resultDiv.textContent = `✅ FOUND: ${decodedText}`;
-resultDiv.className = "result found";
-} else {
-resultDiv.textContent = `❌ NOT FOUND: ${decodedText}`;
-resultDiv.className = "result not-found";
-}
-}
+  // Load UPCs from Google Sheet
+  async function loadUPCs() {
+    try {
+      const response = await fetch(sheetUrl);
+      const text = await response.text();
+      upcList = text.split("\n").map(line => line.trim());
+      console.log("UPC list loaded:", upcList);
+    } catch (err) {
+      console.error("Error loading UPC list:", err);
+    }
+  }
 
+  // Run this when the page loads
+  loadUPCs();
 
-const html5QrcodeScanner = new Html5QrcodeScanner(
-"reader",
-{ fps: 10, qrbox: 250 },
-false
-);
-html5QrcodeScanner.render(onScanSuccess);
+  function onScanSuccess(decodedText) {
+    const resultDiv = document.getElementById("result");
+    if (upcList.includes(decodedText)) {
+      resultDiv.textContent = `✅ FOUND: ${decodedText}`;
+      resultDiv.className = "result found";
+    } else {
+      resultDiv.textContent = `❌ NOT FOUND: ${decodedText}`;
+      resultDiv.className = "result not-found";
+    }
+  }
+
+  const html5QrcodeScanner = new Html5QrcodeScanner(
+    "reader",
+    { fps: 10, qrbox: 250 },
+    false
+  );
+  html5QrcodeScanner.render(onScanSuccess);
 </script>
-</body>
-
-</html>
-
-
-
