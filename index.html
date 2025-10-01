@@ -1,170 +1,92 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>UPC Checker (with GPS + Sheet update)</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UPC Checker</title>
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
-    body { font-family: Arial, Helvetica, sans-serif; padding: 18px; background:#f7f8fb; color:#111 }
-    #reader { width:320px; margin: 10px auto }
-    .result { margin-top:14px; font-weight:600 }
-    .found { color: #0b7a27 }
-    .not-found { color: #c62828 }
-    #log { margin-top:12px; font-size:0.9em; white-space:pre-wrap; background:#fff; padding:10px; border-radius:6px; box-shadow: 0 1px 3px rgba(0,0,0,0.08) }
-    input { width:240px; padding:6px; margin-right:6px }
-    button { padding:6px 10px }
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f9fafb;
+      color: #111;
+      text-align: center;
+    }
+    #reader {
+      width: 300px;
+      margin: 0 auto;
+    }
+    .result {
+      margin-top: 20px;
+      font-size: 1.2em;
+      font-weight: bold;
+    }
+    .found {
+      color: green;
+    }
+    .not-found {
+      color: red;
+    }
   </style>
 </head>
 <body>
-  <h2>UPC Checker</h2>
-  <p>Scan a barcode or paste one below. Will mark sheet and save timestamp + GPS when found.</p>
-
+  <h1>UPC Checker</h1>
+  <p>Scan a barcode to see if it exists in your list.</p>
   <div id="reader"></div>
-
-  <div style="text-align:center; margin-top:8px;">
-    <input id="manualInput" placeholder="Paste UPC here" />
-    <button id="manualBtn">Check</button>
-  </div>
-
   <div id="result" class="result"></div>
 
-  <div id="log" aria-live="polite">Log: waiting...</div>
+  <script>
+    let upcList = [];
 
-<script>
-const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSZ5Z37VMEGr7AY4KET_a2eFjxzPmVzsPkErvJiFfue_ShDqo0ZFWQzi-Ias7PpnPEsAW-Y_65WsCZX/pub?output=csv"; // <-- replace
-const webAppUrl = "https://script.google.com/macros/s/AKfycbwTsSDF-5ZppblK29du5GpbliGsiWQKatjJ49SjqrIHmBIc4ZCgMV2JWRQ-YadVleB6zg/exec"; // <-- replace
+    // Replace with your published Google Sheet CSV link
+    const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSZ5Z37VMEGr7AY4KET_a2eFjxzPmVzsPkErvJiFfue_ShDqo0ZFWQzi-Ias7PpnPEsAW-Y_65WsCZX/pub?output=csv";
 
-let upcList = [];
-let upcSet = new Set();
+    // Replace with your Google Apps Script Web App URL
+    const webAppUrl = "https://script.google.com/macros/s/AKfycbzo6mhvhOM4e9yTcX7Zuj2PWY4lndTeBoOsFmh1_3c2itz_-UJ0-ReCOGYvX0eUAC0mYA/exec";
 
-function addLog(msg) {
-  const l = document.getElementById('log');
-  const ts = new Date().toISOString();
-  l.textContent = ts + " — " + msg + "\n\n" + l.textContent;
-}
-
-function normalizeUPC(s) {
-  if (!s) return "";
-  const digits = String(s).replace(/\D/g,'').trim();
-  return digits;
-}
-
-async function loadUPCs() {
-  try {
-    addLog("Loading UPC list from sheet CSV...");
-    const r = await fetch(sheetUrl);
-    if (!r.ok) throw new Error("Failed to fetch CSV: " + r.status);
-    const text = await r.text();
-    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-    upcList = [];
-    upcSet = new Set();
-    for (let line of lines) {
-      // if CSV has multiple columns, take first column before a comma
-      if (line.indexOf(',') !== -1) line = line.split(',')[0];
-      line = line.replace(/^"|"$/g, '').trim();
-      const n = normalizeUPC(line);
-      if (n) {
-        upcList.push(n);
-        upcSet.add(n);
-        // also add EAN-13 variant if the sheet may contain 12-digit values (add leading zero)
-        if (n.length === 12) upcSet.add('0' + n);
-        if (n.length === 13 && n.charAt(0) === '0') upcSet.add(n.substring(1));
+    // Load UPCs from Google Sheet
+    async function loadUPCs() {
+      try {
+        const response = await fetch(sheetUrl);
+        const text = await response.text();
+        upcList = text.split("\n").map(line => line.trim());
+        console.log("UPC list loaded:", upcList);
+      } catch (err) {
+        console.error("Error loading UPC list:", err);
       }
     }
-    addLog("Loaded " + upcList.length + " UPCs.");
-  } catch(err) {
-    addLog("Error loading UPCs: " + err);
-  }
-}
 
-// call on load
-loadUPCs();
+    // Run this when the page loads
+    loadUPCs();
 
-function showResult(text, found) {
-  const r = document.getElementById('result');
-  r.textContent = text;
-  r.className = 'result ' + (found ? 'found' : 'not-found');
-}
+    function onScanSuccess(decodedText) {
+      const resultDiv = document.getElementById("result");
+      if (upcList.includes(decodedText)) {
+        resultDiv.textContent = `✅ FOUND: ${decodedText}`;
+        resultDiv.className = "result found";
 
-async function sendToSheet(upc, lat, lng) {
-  try {
-    const body = { upc: upc, lat: lat, lng: lng };
-    addLog("Sending to sheet: " + JSON.stringify(body));
-    const res = await fetch(webAppUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    const text = await res.text();
-    addLog("Server returned: " + text + " (status " + res.status + ")");
-    // try parse
-    try {
-      const j = JSON.parse(text);
-      if (j.status) addLog("Parsed server status: " + j.status);
-    } catch(e) {
-      // ignore
-    }
-    return text;
-  } catch(err) {
-    addLog("Error during fetch to web app: " + err);
-    return null;
-  }
-}
+        // Send UPC back to Google Apps Script to mark it as found
+        fetch(webAppUrl, {
+          method: "POST",
+          body: JSON.stringify({ upc: decodedText })
+        })
+        .then(res => res.text())
+        .then(msg => console.log("Google Sheet response:", msg))
+        .catch(err => console.error("Error sending to Google Sheet:", err));
 
-function handleFound(rawDecoded) {
-  const decoded = String(rawDecoded || '').trim();
-  const candidate = normalizeUPC(decoded);
-  // create variants: as-is, drop leading 0 if present, add leading 0 if 12 digits
-  const variants = [candidate];
-  if (candidate.length === 13 && candidate.charAt(0) === '0') variants.push(candidate.substring(1));
-  if (candidate.length === 12) variants.push('0'+candidate);
-
-  let matched = false;
-  for (let v of variants) {
-    if (upcSet.has(v)) { matched = v; break; }
-  }
-
-  if (matched) {
-    showResult("✅ FOUND: " + decoded + " (matched variant: " + matched + ")", true);
-
-    // try to get geolocation
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(async function(pos) {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        addLog("Got GPS: " + lat + ", " + lng);
-        await sendToSheet(matched, lat, lng);
-      }, async function(err) {
-        addLog("Geolocation error: " + err.message);
-        // still send with empty coords
-        await sendToSheet(matched, "", "");
-      }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 });
-    } else {
-      addLog("Geolocation not supported by browser");
-      sendToSheet(matched, "", "");
+      } else {
+        resultDiv.textContent = `❌ NOT FOUND: ${decodedText}`;
+        resultDiv.className = "result not-found";
+      }
     }
 
-  } else {
-    showResult("❌ NOT FOUND: " + decoded, false);
-    addLog("No match for scanned code: " + decoded + " (variants: " + variants.join(',') + ")");
-  }
-}
-
-// html5-qrcode scanner
-const html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 }, false);
-html5QrcodeScanner.render((decodedText, decodedResult) => {
-  addLog("Scanned: " + decodedText);
-  handleFound(decodedText);
-});
-
-// manual input button
-document.getElementById('manualBtn').addEventListener('click', () => {
-  const v = document.getElementById('manualInput').value.trim();
-  if (!v) { addLog("Manual input empty"); return; }
-  addLog("Manual input check: " + v);
-  handleFound(v);
-});
-</script>
+    const html5QrcodeScanner = new Html5QrcodeScanner(
+      "reader",
+      { fps: 10, qrbox: 250 },
+      false
+    );
+    html5QrcodeScanner.render(onScanSuccess);
+  </script>
 </body>
 </html>
