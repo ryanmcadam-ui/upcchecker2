@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>UPC Checker</title>
+  <title>Toniebox 2 Serial Number Checker</title>
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
     body {
@@ -31,8 +31,8 @@
   </style>
 </head>
 <body>
-  <h1>UPC Checker</h1>
-  <p>Scan a barcode to see if it exists in your list.</p>
+  <h1>Toniebox 2 Serial Number Scanner</h1>
+  <p>Scan the QR code on the underside of the box to check if it is an defective box. If the result is "found", please defect the box out with a Target team member.</p>
   <div id="reader"></div>
   <div id="result" class="result"></div>
 
@@ -63,7 +63,7 @@
     function onScanSuccess(decodedText) {
       const resultDiv = document.getElementById("result");
       if (upcList.includes(decodedText)) {
-        resultDiv.textContent = `✅ FOUND: ${decodedText}`;
+        resultDiv.textContent = `✅ DEFECTIVE: please defect out of inventory ${decodedText}`;
         resultDiv.className = "result found";
 
         // Send UPC back to Google Apps Script to mark it as found
@@ -76,7 +76,7 @@
         .catch(err => console.error("Error sending to Google Sheet:", err));
 
       } else {
-        resultDiv.textContent = `❌ NOT FOUND: ${decodedText}`;
+        resultDiv.textContent = `❌ NOT DEFECTIVE: please keep in inventory ${decodedText}`;
         resultDiv.className = "result not-found";
       }
     }
@@ -90,3 +90,4 @@
   </script>
 </body>
 </html>
+
