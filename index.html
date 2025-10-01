@@ -1,89 +1,56 @@
-</style>
-</head>
-<body>
-<h1>UPC Checker</h1>
-<p>Scan a barcode to see if it exists in your list.</p>
-<div id="reader"></div>
-<div id="result" class="result"></div>
+  <title>UPC Checker</title>
 
+  <script>
+    let upcList = [];
 
-<script>
-let upcList = [];
+    // Replace with your published Google Sheet CSV link
+    const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSZ5Z37VMEGr7AY4KET_a2eFjxzPmVzsPkErvJiFfue_ShDqo0ZFWQzi-Ias7PpnPEsAW-Y_65WsCZX/pub?output=csv";
 
+    // Replace with your Google Apps Script Web App URL
+    const webAppUrl = "https://script.google.com/macros/s/AKfycbzo6mhvhOM4e9yTcX7Zuj2PWY4lndTeBoOsFmh1_3c2itz_-UJ0-ReCOGYvX0eUAC0mYA/exec";
 
-// Replace with your published Google Sheet CSV link
-const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSZ5Z37VMEGr7AY4KET_a2eFjxzPmVzsPkErvJiFfue_ShDqo0ZFWQzi-Ias7PpnPEsAW-Y_65WsCZX/pub?output=csv";
+    // Load UPCs from Google Sheet
+    async function loadUPCs() {
+      try {
+        const response = await fetch(sheetUrl);
+        const text = await response.text();
+        upcList = text.split("\n").map(line => line.trim());
+        console.log("UPC list loaded:", upcList);
+      } catch (err) {
+        console.error("Error loading UPC list:", err);
+      }
+    }
 
+    // Run this when the page loads
+    loadUPCs();
 
-// Replace with your Google Apps Script Web App URL
-const webAppUrl = "https://script.google.com/macros/s/AKfycbzo6mhvhOM4e9yTcX7Zuj2PWY4lndTeBoOsFmh1_3c2itz_-UJ0-ReCOGYvX0eUAC0mYA/exec";
+    function onScanSuccess(decodedText) {
+      const resultDiv = document.getElementById("result");
+      if (upcList.includes(decodedText)) {
+        resultDiv.textContent = `✅ FOUND: ${decodedText}`;
+        resultDiv.className = "result found";
 
+        // Send UPC back to Google Apps Script to mark it as found
+        fetch(webAppUrl, {
+          method: "POST",
+          body: JSON.stringify({ upc: decodedText })
+        })
+        .then(res => res.text())
+        .then(msg => console.log("Google Sheet response:", msg))
+        .catch(err => console.error("Error sending to Google Sheet:", err));
 
-// Load UPCs from Google Sheet
-async function loadUPCs() {
-try {
-const response = await fetch(sheetUrl);
-const text = await response.text();
-upcList = text.split("\n").map(line => line.trim());
-console.log("UPC list loaded:", upcList);
-} catch (err) {
-console.error("Error loading UPC list:", err);
-}
-}
+      } else {
+        resultDiv.textContent = `❌ NOT FOUND: ${decodedText}`;
+        resultDiv.className = "result not-found";
+      }
+    }
 
-
-// Run this when the page loads
-loadUPCs();
-
-
-function onScanSuccess(decodedText) {
-const resultDiv = document.getElementById("result");
-if (upcList.includes(decodedText)) {
-resultDiv.textContent = `✅ FOUND: ${decodedText}`;
-resultDiv.className = "result found";
-
-
-// Get GPS location
-if (navigator.geolocation) {
-navigator.geolocation.getCurrentPosition(function(pos) {
-const lat = pos.coords.latitude;
-const lng = pos.coords.longitude;
-
-
-// Send UPC + GPS to Google Apps Script
-fetch(webAppUrl, {
-method: "POST",
-headers: { "Content-Type": "application/json" },
-body: JSON.stringify({ upc: decodedText, lat: lat, lng: lng })
-})
-.then(res => res.text())
-.then(msg => console.log("Google Sheet response:", msg))
-.catch(err => console.error("Error sending to Google Sheet:", err));
-
-
-}, function(err) {
-console.error("GPS error:", err);
-});
-} else {
-console.error("Geolocation not supported.");
-}
-
-
-} else {
-resultDiv.textContent = `❌ NOT FOUND: ${decodedText}`;
-resultDiv.className = "result not-found";
-}
-}
-
-
-const html5QrcodeScanner = new Html5QrcodeScanner(
-"reader",
-{ fps: 10, qrbox: 250 },
-false
-);
-html5QrcodeScanner.render(onScanSuccess);
-</script>
+    const html5QrcodeScanner = new Html5QrcodeScanner(
+      "reader",
+      { fps: 10, qrbox: 250 },
+      false
+    );
+    html5QrcodeScanner.render(onScanSuccess);
+  </script>
 </body>
 </html>
-
-
