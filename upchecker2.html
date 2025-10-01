@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UPC Checker</title>
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<style>
+body {
+font-family: Arial, sans-serif;
+padding: 20px;
+background: #f9fafb;
+color: #111;
+text-align: center;
+}
+#reader {
+width: 300px;
+margin: 0 auto;
+}
+.result {
+margin-top: 20px;
+font-size: 1.2em;
+font-weight: bold;
+}
+.found {
+color: green;
+}
+.not-found {
+color: red;
+}
+</style>
+</head>
+<body>
+<h1>UPC Checker</h1>
+<p>Scan a barcode to see if it exists in your list.</p>
+<div id="reader"></div>
+<div id="result" class="result"></div>
+
+
+<script>
+// Example UPC list (replace with your own list)
+const upcList = [
+"012345678905",
+"123456789012",
+"036000291452",
+"789123456789"
+];
+
+
+function onScanSuccess(decodedText) {
+const resultDiv = document.getElementById("result");
+if (upcList.includes(decodedText)) {
+resultDiv.textContent = `✅ FOUND: ${decodedText}`;
+resultDiv.className = "result found";
+} else {
+resultDiv.textContent = `❌ NOT FOUND: ${decodedText}`;
+resultDiv.className = "result not-found";
+}
+}
+
+
+const html5QrcodeScanner = new Html5QrcodeScanner(
+"reader",
+{ fps: 10, qrbox: 250 },
+false
+);
+html5QrcodeScanner.render(onScanSuccess);
+</script>
+</body>
+</html>
