@@ -1,31 +1,4 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>UPC Checker</title>
-<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-<style>
-body {
-font-family: Arial, sans-serif;
-padding: 20px;
-background: #f9fafb;
-color: #111;
-text-align: center;
-}
-#reader {
-width: 300px;
-margin: 0 auto;
-}
-.result {
-margin-top: 20px;
-font-size: 1.2em;
-font-weight: bold;
-}
-.found {
-color: green;
-}
-.not-found {
 color: red;
 }
 </style>
@@ -73,14 +46,30 @@ resultDiv.textContent = `✅ FOUND: ${decodedText}`;
 resultDiv.className = "result found";
 
 
-// Send UPC back to Google Apps Script to mark it as found
+// Get GPS location
+if (navigator.geolocation) {
+navigator.geolocation.getCurrentPosition(function(pos) {
+const lat = pos.coords.latitude;
+const lng = pos.coords.longitude;
+
+
+// Send UPC + GPS to Google Apps Script
 fetch(webAppUrl, {
 method: "POST",
-body: JSON.stringify({ upc: decodedText })
+headers: { "Content-Type": "application/json" },
+body: JSON.stringify({ upc: decodedText, lat: lat, lng: lng })
 })
 .then(res => res.text())
 .then(msg => console.log("Google Sheet response:", msg))
 .catch(err => console.error("Error sending to Google Sheet:", err));
+
+
+}, function(err) {
+console.error("GPS error:", err);
+});
+} else {
+console.error("Geolocation not supported.");
+}
 
 
 } else {
@@ -99,6 +88,3 @@ html5QrcodeScanner.render(onScanSuccess);
 </script>
 </body>
 </html>
-
-
-
