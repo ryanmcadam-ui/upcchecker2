@@ -38,42 +38,64 @@ color: red;
 
 
 <script>
-  let upcList = [];
+let upcList = [];
 
-  // Replace with your published CSV link
-  const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSZ5Z37VMEGr7AY4KET_a2eFjxzPmVzsPkErvJiFfue_ShDqo0ZFWQzi-Ias7PpnPEsAW-Y_65WsCZX/pub?output=csv";
 
-  // Load UPCs from Google Sheet
-  async function loadUPCs() {
-    try {
-      const response = await fetch(sheetUrl);
-      const text = await response.text();
-      upcList = text.split("\n").map(line => line.trim());
-      console.log("UPC list loaded:", upcList);
-    } catch (err) {
-      console.error("Error loading UPC list:", err);
-    }
-  }
+// Replace with your published Google Sheet CSV link
+const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSZ5Z37VMEGr7AY4KET_a2eFjxzPmVzsPkErvJiFfue_ShDqo0ZFWQzi-Ias7PpnPEsAW-Y_65WsCZX/pub?output=csv";
 
-  // Run this when the page loads
-  loadUPCs();
 
-  function onScanSuccess(decodedText) {
-    const resultDiv = document.getElementById("result");
-    if (upcList.includes(decodedText)) {
-      resultDiv.textContent = `✅ FOUND: ${decodedText}`;
-      resultDiv.className = "result found";
-    } else {
-      resultDiv.textContent = `❌ NOT FOUND: ${decodedText}`;
-      resultDiv.className = "result not-found";
-    }
-  }
+// Replace with your Google Apps Script Web App URL
+const webAppUrl = "YOUR_WEB_APP_URL";
 
-  const html5QrcodeScanner = new Html5QrcodeScanner(
-    "reader",
-    { fps: 10, qrbox: 250 },
-    false
-  );
-  html5QrcodeScanner.render(onScanSuccess);
+
+// Load UPCs from Google Sheet
+async function loadUPCs() {
+try {
+const response = await fetch(sheetUrl);
+const text = await response.text();
+upcList = text.split("\n").map(line => line.trim());
+console.log("UPC list loaded:", upcList);
+} catch (err) {
+console.error("Error loading UPC list:", err);
+}
+}
+
+
+// Run this when the page loads
+loadUPCs();
+
+
+function onScanSuccess(decodedText) {
+const resultDiv = document.getElementById("result");
+if (upcList.includes(decodedText)) {
+resultDiv.textContent = `✅ FOUND: ${decodedText}`;
+resultDiv.className = "result found";
+
+
+// Send UPC back to Google Apps Script to mark it as found
+fetch(webAppUrl, {
+method: "POST",
+body: JSON.stringify({ upc: decodedText })
+})
+.then(res => res.text())
+.then(msg => console.log("Google Sheet response:", msg))
+.catch(err => console.error("Error sending to Google Sheet:", err));
+
+
+} else {
+resultDiv.textContent = `❌ NOT FOUND: ${decodedText}`;
+resultDiv.className = "result not-found";
+}
+}
+
+
+const html5QrcodeScanner = new Html5QrcodeScanner(
+"reader",
+{ fps: 10, qrbox: 250 },
+false
+);
+html5QrcodeScanner.render(onScanSuccess);
 </script>
-
+</body>
+</html>
