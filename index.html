@@ -61,25 +61,38 @@
     loadUPCs();
 
     function onScanSuccess(decodedText) {
-      const resultDiv = document.getElementById("result");
-      if (upcList.includes(decodedText)) {
-        resultDiv.textContent = `✅ FOUND: ${decodedText}`;
-        resultDiv.className = "result found";
+  const resultDiv = document.getElementById("result");
+  if (upcList.includes(decodedText)) {
+    resultDiv.textContent = `✅ FOUND: ${decodedText}`;
+    resultDiv.className = "result found";
 
-        // Send UPC back to Google Apps Script to mark it as found
+    // Get GPS location
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(function(pos) {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+
+        // Send UPC + GPS to Google Apps Script
         fetch(webAppUrl, {
           method: "POST",
-          body: JSON.stringify({ upc: decodedText })
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ upc: decodedText, lat: lat, lng: lng })
         })
         .then(res => res.text())
         .then(msg => console.log("Google Sheet response:", msg))
         .catch(err => console.error("Error sending to Google Sheet:", err));
-
-      } else {
-        resultDiv.textContent = `❌ NOT FOUND: ${decodedText}`;
-        resultDiv.className = "result not-found";
-      }
+      }, function(err) {
+        console.error("GPS error:", err);
+      });
+    } else {
+      console.error("Geolocation not supported.");
     }
+
+  } else {
+    resultDiv.textContent = `❌ NOT FOUND: ${decodedText}`;
+    resultDiv.className = "result not-found";
+  }
+}
 
     const html5QrcodeScanner = new Html5QrcodeScanner(
       "reader",
@@ -90,4 +103,5 @@
   </script>
 </body>
 </html>
+
 
